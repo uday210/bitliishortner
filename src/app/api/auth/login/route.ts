@@ -1,23 +1,36 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { checkCredentials, createSessionToken, COOKIE_NAME } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const { username, password } = await req.json();
 
-  if (!checkCredentials(username, password)) {
+  const response = NextResponse.json({ success: true });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    }
+  );
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email: username,
+    password,
+  });
+
+  if (error) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  const token = await createSessionToken();
-  const res = NextResponse.json({ success: true });
-
-  res.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: "/",
-  });
-
-  return res;
+  return response;
 }
