@@ -4,16 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start -p ${PORT:-3000}",
-    "lint": "eslint",
-    "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
+    "@supabase/supabase-js": "^2.103.0",
     "@types/pg": "^8.20.0",
     "@types/qrcode": "^1.5.6",
     "dotenv": "^17.4.1",

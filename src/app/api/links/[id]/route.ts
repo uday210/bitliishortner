@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 export async function DELETE(
   _req: NextRequest,
@@ -7,11 +7,12 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    await prisma.link.delete({ where: { id } });
+    const { error } = await supabase.from("links").delete().eq("id", id);
+    if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete link error:", error);
-    return NextResponse.json({ error: "Link not found" }, { status: 404 });
+    return NextResponse.json({ error: "Failed to delete" }, { status: 500 });
   }
 }
 
@@ -21,17 +22,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const link = await prisma.link.findUnique({
-      where: { id },
-      include: {
-        visits: { orderBy: { createdAt: "desc" }, take: 50 },
-        _count: { select: { visits: true } },
-      },
-    });
-    if (!link) {
+    const { data, error } = await supabase
+      .from("links")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
-    return NextResponse.json(link);
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Get link error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

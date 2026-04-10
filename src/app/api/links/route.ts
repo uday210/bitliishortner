@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 
 export async function GET() {
   try {
-    const links = await prisma.link.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        _count: { select: { visits: true } },
-      },
-    });
-    return NextResponse.json(links);
+    const { data, error } = await supabase
+      .from("links")
+      .select("*")
+      .order("createdAt", { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error("List links error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
+import { nanoid } from "nanoid";
 
 export async function GET(
   req: NextRequest,
@@ -7,26 +8,32 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  const link = await prisma.link.findUnique({ where: { slug } });
+  const { data: link } = await supabase
+    .from("links")
+    .select("*")
+    .eq("slug", slug)
+    .single();
 
   if (!link) {
     return NextResponse.redirect(new URL("/?error=not_found", req.url));
   }
 
-  // Track click asynchronously
-  await Promise.all([
-    prisma.link.update({
-      where: { id: link.id },
-      data: { clicks: { increment: 1 } },
-    }),
-    prisma.visit.create({
-      data: {
-        linkId: link.id,
-        userAgent: req.headers.get("user-agent") ?? undefined,
-        referer: req.headers.get("referer") ?? undefined,
-      },
-    }),
-  ]);
+  // Track click asynchronously (fire and forget)
+  supabase
+    .from("links")
+    .update({ clicks: link.clicks + 1 })
+    .eq("id", link.id)
+    .then(() => {});
+
+  supabase
+    .from("visits")
+    .insert({
+      id: nanoid(),
+      linkId: link.id,
+      userAgent: req.headers.get("user-agent") ?? null,
+      referer: req.headers.get("referer") ?? null,
+    })
+    .then(() => {});
 
   return NextResponse.redirect(link.originalUrl, { status: 301 });
 }
