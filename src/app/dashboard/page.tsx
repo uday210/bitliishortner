@@ -466,7 +466,8 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 w-72" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold text-gray-900">QR Code</h3>
             <p className="text-xs text-gray-500 text-center break-all">{baseUrl}/{qrSlug}</p>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={`/api/qr?url=${encodeURIComponent(`${baseUrl}/${qrSlug}`)}`}
               alt="QR"
               width={200}
