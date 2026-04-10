@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 interface ShortenedLink {
   id: string;
@@ -12,6 +13,7 @@ interface ShortenedLink {
 }
 
 export default function HomePage() {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
@@ -24,6 +26,11 @@ export default function HomePage() {
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const shortUrl = result ? `${baseUrl}/${result.slug}` : "";
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -90,25 +97,26 @@ export default function HomePage() {
             </div>
             <span className="font-bold text-xl text-gray-900">Snip</span>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-          >
-            Dashboard
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex items-center gap-3">
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 5l7 7-7 7"
-              />
-            </svg>
-          </Link>
+              Dashboard
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-sm font-medium text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              Logout
+            </button>
+          </div>
         </div>
       </nav>
 
