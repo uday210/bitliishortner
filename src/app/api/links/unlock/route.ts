@@ -2,32 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { nanoid } from "nanoid";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
-  const { slug } = await params;
+export async function POST(req: NextRequest) {
+  const { slug, password } = await req.json();
 
   const { data: link } = await supabase
     .from("links")
     .select("*")
     .eq("slug", slug)
+    .eq("isActive", true)
     .single();
 
-  if (!link || !link.isActive) {
-    return NextResponse.redirect(new URL("/?error=not_found", req.url));
+  if (!link) {
+    return NextResponse.json({ error: "Link not found" }, { status: 404 });
   }
 
-  // Check expiry
   if (link.expiresAt && new Date(link.expiresAt) < new Date()) {
-    // Auto-disable
-    await supabase.from("links").update({ isActive: false }).eq("id", link.id);
-    return NextResponse.redirect(new URL("/?error=expired", req.url));
+    return NextResponse.json({ error: "Link expired" }, { status: 410 });
   }
 
-  // Password protected → redirect to password page
-  if (link.password) {
-    return NextResponse.redirect(new URL(`/p/${slug}`, req.url));
+  if (link.password !== password) {
+    return NextResponse.json({ error: "Incorrect password" }, { status: 401 });
   }
 
   // Track click
@@ -39,5 +33,5 @@ export async function GET(
     referer: req.headers.get("referer") ?? null,
   }).then(() => {});
 
-  return NextResponse.redirect(link.originalUrl, { status: 301 });
+  return NextResponse.json({ url: link.originalUrl });
 }

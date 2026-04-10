@@ -16,6 +16,27 @@ export async function DELETE(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const { data, error } = await supabase
+      .from("links")
+      .update(body)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Patch link error:", error);
+    return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+  }
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

@@ -14,72 +14,44 @@ export async function POST(req: NextRequest) {
   try {
     const authClient = await createClient();
     const { data: { user } } = await authClient.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     // Get or create profile
-    let { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("userId", user.id)
-      .single();
-
+    let { data: profile } = await supabase.from("profiles").select("*").eq("userId", user.id).single();
     if (!profile) {
-      const { data: newProfile } = await supabase
-        .from("profiles")
-        .insert({ id: nanoid(), userId: user.id, subscription: "free" })
-        .select()
-        .single();
-      profile = newProfile;
+      const { data: np } = await supabase.from("profiles").insert({ id: nanoid(), userId: user.id, subscription: "free" }).select().single();
+      profile = np;
     }
 
     const subscription = profile?.subscription ?? "free";
     const limit = PLAN_LIMITS[subscription];
 
-    // Check daily limit
     if (limit !== null) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-
-      const { count } = await supabase
-        .from("links")
-        .select("*", { count: "exact", head: true })
-        .eq("userId", user.id)
-        .gte("createdAt", todayStart.toISOString());
-
+      const { count } = await supabase.from("links").select("*", { count: "exact", head: true }).eq("userId", user.id).gte("createdAt", todayStart.toISOString());
       if (count !== null && count >= limit) {
-        return NextResponse.json(
-          { error: `Daily limit of ${limit} links reached. Upgrade your plan for more.`, limitReached: true },
-          { status: 429 }
-        );
+        return NextResponse.json({ error: `Daily limit of ${limit} links reached. Upgrade your plan.`, limitReached: true }, { status: 429 });
       }
     }
 
-    const { url, slug, title } = await req.json();
+    const { url, slug, title, password, tags, expiresInDays } = await req.json();
 
-    if (!url) {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 });
-    }
-    try {
-      new URL(url);
-    } catch {
-      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
-    }
+    if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
+    try { new URL(url); } catch { return NextResponse.json({ error: "Invalid URL" }, { status: 400 }); }
 
     const finalSlug = slug?.trim() || nanoid(7);
 
     if (slug?.trim()) {
-      const { data: existing } = await supabase
-        .from("links")
-        .select("id")
-        .eq("slug", finalSlug)
-        .single();
+      const { data: existing } = await supabase.from("links").select("id").eq("slug", finalSlug).single();
+      if (existing) return NextResponse.json({ error: "This slug is already taken" }, { status: 409 });
+    }
 
-      if (existing) {
-        return NextResponse.json({ error: "This slug is already taken" }, { status: 409 });
-      }
+    let expiresAt: string | null = null;
+    if (expiresInDays && expiresInDays > 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + expiresInDays);
+      expiresAt = d.toISOString();
     }
 
     const { data, error } = await supabase
@@ -91,12 +63,15 @@ export async function POST(req: NextRequest) {
         title: title?.trim() || null,
         clicks: 0,
         userId: user.id,
+        password: password?.trim() || null,
+        tags: tags?.filter(Boolean) ?? [],
+        expiresAt,
+        isActive: true,
       })
       .select()
       .single();
 
     if (error) throw error;
-
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     console.error("Shorten error:", error);
