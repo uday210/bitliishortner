@@ -1,15 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase-server";
 import { nanoid } from "nanoid";
+
+const PLAN_LIMITS: Record<string, number | null> = {
+  free: 20,
+  basic: 100,
+  premium: 500,
+  unlimited: null,
+};
 
 export async function POST(req: NextRequest) {
   try {
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get or create profile
+    let { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("userId", user.id)
+      .single();
+
+    if (!profile) {
+      const { data: newProfile } = await supabase
+        .from("profiles")
+        .insert({ id: nanoid(), userId: user.id, subscription: "free" })
+        .select()
+        .single();
+      profile = newProfile;
+    }
+
+    const subscription = profile?.subscription ?? "free";
+    const limit = PLAN_LIMITS[subscription];
+
+    // Check daily limit
+    if (limit !== null) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+
+      const { count } = await supabase
+        .from("links")
+        .select("*", { count: "exact", head: true })
+        .eq("userId", user.id)
+        .gte("createdAt", todayStart.toISOString());
+
+      if (count !== null && count >= limit) {
+        return NextResponse.json(
+          { error: `Daily limit of ${limit} links reached. Upgrade your plan for more.`, limitReached: true },
+          { status: 429 }
+        );
+      }
+    }
+
     const { url, slug, title } = await req.json();
 
     if (!url) {
       return NextResponse.json({ error: "URL is required" }, { status: 400 });
     }
-
     try {
       new URL(url);
     } catch {
@@ -38,6 +90,7 @@ export async function POST(req: NextRequest) {
         slug: finalSlug,
         title: title?.trim() || null,
         clicks: 0,
+        userId: user.id,
       })
       .select()
       .single();
