@@ -52,12 +52,12 @@ saveKeyBtn.addEventListener("click", async () => {
   saveKeyBtn.textContent = "Checking…";
   saveKeyBtn.disabled = true;
   try {
-    const res = await fetch(`${API_BASE}/api/shorten`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ url: "https://example.com" }),
+    const res = await fetch(`${API_BASE}/api/apikey/verify`, {
+      method: "GET",
+      headers: { "Authorization": `Bearer ${key}` },
     });
-    if (res.status === 401) { showError("Invalid API key"); return; }
+    const data = await res.json();
+    if (!data.valid) { showError("Invalid API key"); return; }
     chrome.storage.local.set({ apiKey: key }, () => {
       showMain();
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
