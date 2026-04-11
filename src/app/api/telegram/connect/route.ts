@@ -13,12 +13,11 @@ export async function POST() {
     const token = nanoid(16);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
 
-    // Store token in profiles
-    await supabase.from("profiles").upsert({
-      userId: user.id,
+    // Store token in existing profile
+    await supabase.from("profiles").update({
       telegramToken: token,
       telegramTokenExpiresAt: expiresAt,
-    }, { onConflict: "userId" });
+    }).eq("userId", user.id);
 
     const botUsername = process.env.TELEGRAM_BOT_USERNAME;
     const deepLink = `https://t.me/${botUsername}?start=${token}`;
