@@ -116,6 +116,17 @@ export default function DashboardPage() {
   const [telegramConnecting, setTelegramConnecting] = useState(false);
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
 
+  // Analytics modal
+  const [analyticsLink, setAnalyticsLink] = useState<LinkItem | null>(null);
+  const [analyticsData, setAnalyticsData] = useState<{
+    totalClicks: number;
+    clicksPerDay: { date: string; count: number }[];
+    topReferrers: { name: string; count: number }[];
+    topCountries: { name: string; count: number }[];
+    devices: { name: string; count: number }[];
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
   // Edit modal
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -223,6 +234,18 @@ export default function DashboardPage() {
       await fetchData();
     } catch { /* ignore */ }
     finally { setImporting(false); }
+  }
+
+  async function openAnalytics(link: LinkItem) {
+    setAnalyticsLink(link);
+    setAnalyticsData(null);
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch(`/api/links/${link.id}/analytics`);
+      if (res.ok) setAnalyticsData(await res.json());
+    } finally {
+      setAnalyticsLoading(false);
+    }
   }
 
   function openEdit(link: LinkItem) {
@@ -599,6 +622,10 @@ export default function DashboardPage() {
 
                       {/* Actions - always visible */}
                       <div className="flex items-center gap-0.5 shrink-0">
+                        <button onClick={() => openAnalytics(link)} title="Analytics"
+                          className="p-2 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                        </button>
                         <button onClick={() => openEdit(link)} title="Edit"
                           className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -803,6 +830,125 @@ export default function DashboardPage() {
       </main>
 
       {/* QR Modal */}
+      {/* Analytics Modal */}
+      {analyticsLink && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setAnalyticsLink(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white">
+              <div>
+                <h3 className="font-bold text-gray-900">Analytics</h3>
+                <p className="text-xs text-gray-400 font-mono">{baseUrl.replace(/^https?:\/\//, "")}/{analyticsLink.slug}</p>
+              </div>
+              <button onClick={() => setAnalyticsLink(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            {analyticsLoading ? (
+              <div className="flex items-center justify-center py-20 text-gray-400">
+                <svg className="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                Loading analytics…
+              </div>
+            ) : analyticsData ? (
+              <div className="px-6 py-5 space-y-6">
+
+                {/* Total clicks */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-violet-50 rounded-xl p-4 text-center">
+                    <p className="text-3xl font-bold text-violet-600">{analyticsData.totalClicks}</p>
+                    <p className="text-xs text-violet-500 font-medium mt-1">Total Clicks</p>
+                  </div>
+                  {analyticsData.devices.map((d) => (
+                    <div key={d.name} className="bg-gray-50 rounded-xl p-4 text-center">
+                      <p className="text-3xl font-bold text-gray-800">{d.count}</p>
+                      <p className="text-xs text-gray-500 font-medium mt-1">{d.name}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Clicks per day chart */}
+                <div>
+                  <h4 className="text-sm font-bold text-gray-700 mb-3">Clicks — Last 30 Days</h4>
+                  {(() => {
+                    const max = Math.max(...analyticsData.clicksPerDay.map((d) => d.count), 1);
+                    return (
+                      <div className="flex items-end gap-0.5 h-28 bg-gray-50 rounded-xl p-3">
+                        {analyticsData.clicksPerDay.map((d) => (
+                          <div key={d.date} className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative h-full">
+                            <div
+                              className="w-full bg-violet-500 rounded-sm transition-all group-hover:bg-violet-600 min-h-[2px]"
+                              style={{ height: `${(d.count / max) * 100}%` }}
+                            />
+                            {d.count > 0 && (
+                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none">
+                                {d.count} · {d.date.slice(5)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Referrers + Countries side by side */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-700 mb-3">Top Referrers</h4>
+                    {analyticsData.topReferrers.length === 0 ? (
+                      <p className="text-xs text-gray-400">No data yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {analyticsData.topReferrers.map((r) => {
+                          const pct = Math.round((r.count / analyticsData.totalClicks) * 100);
+                          return (
+                            <div key={r.name}>
+                              <div className="flex items-center justify-between text-xs mb-0.5">
+                                <span className="text-gray-700 truncate max-w-[150px]">{r.name}</span>
+                                <span className="text-gray-400 shrink-0 ml-2">{r.count} · {pct}%</span>
+                              </div>
+                              <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-gray-700 mb-3">Top Countries</h4>
+                    {analyticsData.topCountries.length === 0 ? (
+                      <p className="text-xs text-gray-400">No data yet</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {analyticsData.topCountries.map((c) => {
+                          const pct = Math.round((c.count / analyticsData.totalClicks) * 100);
+                          return (
+                            <div key={c.name}>
+                              <div className="flex items-center justify-between text-xs mb-0.5">
+                                <span className="text-gray-700">{c.name}</span>
+                                <span className="text-gray-400 shrink-0 ml-2">{c.count} · {pct}%</span>
+                              </div>
+                              <div className="w-full bg-gray-100 rounded-full h-1.5">
+                                <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-20 text-center text-gray-400 text-sm">Failed to load analytics</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Edit Modal */}
       {editingLink && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingLink(null)}>

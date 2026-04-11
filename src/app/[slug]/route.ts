@@ -37,6 +37,7 @@ export async function GET(
     linkId: link.id,
     userAgent: req.headers.get("user-agent") ?? null,
     referer: req.headers.get("referer") ?? null,
+    country: req.headers.get("cf-ipcountry") ?? req.headers.get("x-vercel-ip-country") ?? null,
   }).then(() => {});
 
   return NextResponse.redirect(link.originalUrl, { status: 301 });
