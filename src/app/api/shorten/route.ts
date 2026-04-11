@@ -12,15 +12,32 @@ const PLAN_LIMITS: Record<string, number | null> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const authClient = await createClient();
-    const { data: { user } } = await authClient.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let userId: string | null = null;
+    let profile = null;
 
-    // Get or create profile
-    let { data: profile } = await supabase.from("profiles").select("*").eq("userId", user.id).single();
+    // Try API key auth first
+    const authHeader = req.headers.get("authorization");
+    const apiKey = authHeader?.startsWith("Bearer snip_") ? authHeader.slice(7) : null;
+
+    if (apiKey) {
+      const { data: p } = await supabase.from("profiles").select("*").eq("apiKey", apiKey).single();
+      if (!p) return NextResponse.json({ error: "Invalid API key" }, { status: 401 });
+      profile = p;
+      userId = p.userId;
+    } else {
+      const authClient = await createClient();
+      const { data: { user } } = await authClient.auth.getUser();
+      if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      userId = user.id;
+    }
+
     if (!profile) {
-      const { data: np } = await supabase.from("profiles").insert({ id: nanoid(), userId: user.id, subscription: "free" }).select().single();
-      profile = np;
+      let { data: p } = await supabase.from("profiles").select("*").eq("userId", userId).single();
+      if (!p) {
+        const { data: np } = await supabase.from("profiles").insert({ id: nanoid(), userId, subscription: "free" }).select().single();
+        p = np;
+      }
+      profile = p;
     }
 
     const subscription = profile?.subscription ?? "free";
@@ -29,7 +46,7 @@ export async function POST(req: NextRequest) {
     if (limit !== null) {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
-      const { count } = await supabase.from("links").select("*", { count: "exact", head: true }).eq("userId", user.id).gte("createdAt", todayStart.toISOString());
+      const { count } = await supabase.from("links").select("*", { count: "exact", head: true }).eq("userId", userId).gte("createdAt", todayStart.toISOString());
       if (count !== null && count >= limit) {
         return NextResponse.json({ error: `Daily limit of ${limit} links reached. Upgrade your plan.`, limitReached: true }, { status: 429 });
       }
@@ -62,7 +79,7 @@ export async function POST(req: NextRequest) {
         slug: finalSlug,
         title: title?.trim() || null,
         clicks: 0,
-        userId: user.id,
+        userId,
         password: password?.trim() || null,
         tags: tags?.filter(Boolean) ?? [],
         expiresAt,

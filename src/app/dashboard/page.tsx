@@ -131,6 +131,12 @@ export default function DashboardPage() {
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
 
+  // API Key
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [apiKeyLoading, setApiKeyLoading] = useState(false);
+  const [apiKeyVisible, setApiKeyVisible] = useState(false);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
+
   // Telegram
   const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
   const [telegramConnecting, setTelegramConnecting] = useState(false);
@@ -159,10 +165,11 @@ export default function DashboardPage() {
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   const fetchData = useCallback(async () => {
-    const [linksRes, profileRes, foldersRes] = await Promise.all([fetch("/api/links"), fetch("/api/profile"), fetch("/api/folders")]);
+    const [linksRes, profileRes, foldersRes, apiKeyRes] = await Promise.all([fetch("/api/links"), fetch("/api/profile"), fetch("/api/folders"), fetch("/api/apikey")]);
     if (linksRes.ok) setLinks(await linksRes.json());
     if (profileRes.ok) setProfile(await profileRes.json());
     if (foldersRes.ok) setFolders(await foldersRes.json());
+    if (apiKeyRes.ok) { const d = await apiKeyRes.json(); setApiKey(d.apiKey); }
     setLoading(false);
   }, []);
 
@@ -270,6 +277,29 @@ export default function DashboardPage() {
       await fetchData();
     } catch { /* ignore */ }
     finally { setImporting(false); }
+  }
+
+  async function generateApiKey() {
+    setApiKeyLoading(true);
+    try {
+      const res = await fetch("/api/apikey", { method: "POST" });
+      if (res.ok) { const d = await res.json(); setApiKey(d.apiKey); setApiKeyVisible(true); }
+    } finally { setApiKeyLoading(false); }
+  }
+
+  async function revokeApiKey() {
+    setApiKeyLoading(true);
+    try {
+      await fetch("/api/apikey", { method: "DELETE" });
+      setApiKey(null); setApiKeyVisible(false);
+    } finally { setApiKeyLoading(false); }
+  }
+
+  async function copyApiKey() {
+    if (!apiKey) return;
+    await navigator.clipboard.writeText(apiKey);
+    setApiKeyCopied(true);
+    setTimeout(() => setApiKeyCopied(false), 2000);
   }
 
   async function createFolder() {
@@ -935,6 +965,64 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {/* API Key */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center shrink-0 border border-gray-200">
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold text-gray-900">API Key</h2>
+                  {apiKey
+                    ? <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Active</span>
+                    : <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Not generated</span>}
+                </div>
+                <p className="text-sm text-gray-400 mt-0.5">Use with the browser extension or your own scripts</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {apiKey ? (
+                <button onClick={revokeApiKey} disabled={apiKeyLoading}
+                  className="px-4 py-2 text-sm font-semibold text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-60">
+                  Revoke
+                </button>
+              ) : (
+                <button onClick={generateApiKey} disabled={apiKeyLoading}
+                  className="px-5 py-2 text-sm font-bold bg-gray-900 hover:bg-gray-700 text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm">
+                  {apiKeyLoading ? "Generating…" : "Generate Key"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {apiKey && (
+            <div className="mt-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-xs font-mono text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 truncate">
+                  {apiKeyVisible ? apiKey : apiKey.slice(0, 8) + "•".repeat(28)}
+                </code>
+                <button onClick={() => setApiKeyVisible((v) => !v)}
+                  className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {apiKeyVisible
+                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                      : <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>}
+                  </svg>
+                </button>
+                <button onClick={copyApiKey}
+                  className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors shrink-0">
+                  {apiKeyCopied
+                    ? <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">Use in requests: <code className="text-indigo-600">Authorization: Bearer {apiKey.slice(0, 12)}…</code></p>
+            </div>
+          )}
+        </div>
 
         {/* Telegram Integration */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { width: 320px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f8fafc; }
+
+    .header {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo svg { width: 18px; height: 18px; }
+    .header h1 { color: #fff; font-size: 16px; font-weight: 700; }
+    .header p { color: rgba(255,255,255,0.7); font-size: 11px; }
+
+    .body { padding: 16px; }
+
+    .section { margin-bottom: 14px; }
+    label { display: block; font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    input[type="text"], input[type="url"] {
+      width: 100%; padding: 8px 12px;
+      border: 1px solid #e5e7eb; border-radius: 8px;
+      font-size: 13px; color: #111827;
+      outline: none; background: #fff;
+    }
+    input:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.15); }
+
+    .api-key-row { display: flex; gap: 6px; }
+    .api-key-row input { flex: 1; font-family: monospace; font-size: 11px; }
+
+    button {
+      padding: 8px 14px; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; border: none; transition: all 0.15s;
+    }
+    .btn-primary { background: #4f46e5; color: #fff; width: 100%; padding: 10px; }
+    .btn-primary:hover { background: #4338ca; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-sm { background: #f3f4f6; color: #374151; font-size: 12px; padding: 6px 10px; }
+    .btn-sm:hover { background: #e5e7eb; }
+    .btn-danger { background: #fee2e2; color: #dc2626; font-size: 12px; padding: 6px 10px; }
+    .btn-danger:hover { background: #fecaca; }
+
+    .result {
+      background: #ede9fe; border: 1px solid #c4b5fd;
+      border-radius: 10px; padding: 12px;
+      display: none;
+    }
+    .result.show { display: block; }
+    .result-label { font-size: 10px; font-weight: 600; color: #7c3aed; margin-bottom: 4px; text-transform: uppercase; }
+    .result-url { font-size: 13px; font-weight: 700; color: #4f46e5; word-break: break-all; margin-bottom: 8px; }
+    .result-copy { background: #4f46e5; color: #fff; width: 100%; padding: 7px; font-size: 12px; border-radius: 6px; }
+    .result-copy:hover { background: #4338ca; }
+
+    .error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 12px; font-size: 12px; display: none; margin-bottom: 10px; }
+    .error.show { display: block; }
+
+    .connected-badge { display: inline-flex; align-items: center; gap: 4px; background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+    .dot { width: 6px; height: 6px; background: #10b981; border-radius: 50%; }
+
+    .divider { border: none; border-top: 1px solid #f3f4f6; margin: 14px 0; }
+
+    .footer { padding: 0 16px 14px; }
+    .footer a { font-size: 11px; color: #9ca3af; text-decoration: none; }
+    .footer a:hover { color: #4f46e5; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <svg fill="none" stroke="white" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+    </div>
+    <div>
+      <h1>Snip</h1>
+      <p>URL Shortener</p>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- Setup screen -->
+    <div id="setup-screen">
+      <div class="section">
+        <label>API Key</label>
+        <p style="font-size:12px;color:#6b7280;margin-bottom:8px;">Get your key from <a href="https://bitil.io/dashboard" target="_blank" style="color:#4f46e5;">bitil.io/dashboard</a> → API Key section</p>
+        <div class="api-key-row">
+          <input type="text" id="api-key-input" placeholder="snip_..." />
+          <button class="btn-sm" id="save-key-btn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main screen -->
+    <div id="main-screen" style="display:none;">
+      <div class="section" style="display:flex;align-items:center;justify-content:space-between;">
+        <span class="connected-badge"><span class="dot"></span> Connected</span>
+        <button class="btn-danger" id="disconnect-btn">Disconnect</button>
+      </div>
+
+      <hr class="divider" />
+
+      <div class="section">
+        <label>URL to shorten</label>
+        <input type="url" id="url-input" placeholder="https://example.com/long-url" />
+      </div>
+
+      <div id="error-msg" class="error"></div>
+
+      <button class="btn-primary" id="shorten-btn">Shorten →</button>
+
+      <div id="result" class="result" style="margin-top:12px;">
+        <div class="result-label">Your short link</div>
+        <div class="result-url" id="result-url"></div>
+        <button class="result-copy" id="copy-btn">Copy to clipboard</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://bitil.io/dashboard" target="_blank">Open Dashboard →</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
