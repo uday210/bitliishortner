@@ -251,6 +251,28 @@ export default function DashboardPage() {
     reader.readAsText(file);
   }
 
+  function exportCSV() {
+    const rows = [
+      ["url", "slug", "title", "tags", "clicks", "created_at", "expires_at"],
+      ...links.map((l) => [
+        l.originalUrl,
+        l.slug,
+        l.title ?? "",
+        (l.tags ?? []).join(","),
+        String(l.clicks),
+        l.createdAt,
+        l.expiresAt ?? "",
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => (v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v)).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `links-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   async function handleImport() {
     setImporting(true);
     setImportResults(null);
@@ -722,6 +744,16 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+              )}
+              {/* Export */}
+              {links.length > 0 && (
+                <button onClick={exportCSV}
+                  className="shrink-0 ml-auto flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export CSV
+                </button>
               )}
             </div>
 
