@@ -124,6 +124,7 @@ export async function POST(req: NextRequest) {
       expiresAt: null,
       isActive: true,
       password: null,
+      source: "telegram",
     });
 
     if (error) {

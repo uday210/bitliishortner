@@ -15,6 +15,7 @@ interface LinkItem {
   password: string | null;
   tags: string[];
   isActive: boolean;
+  source: string | null;
 }
 
 interface Profile {
@@ -518,6 +519,12 @@ export default function DashboardPage() {
                               : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>}
                           </button>
                           {!link.isActive && <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md">Disabled</span>}
+                          {link.source === "telegram" && (
+                            <span className="text-xs bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded-md flex items-center gap-0.5 font-medium">
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z"/></svg>
+                              Telegram
+                            </span>
+                          )}
                           {link.password && <span className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-md flex items-center gap-0.5"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>Protected</span>}
                           {expiry && <span className={`text-xs px-1.5 py-0.5 rounded-md ${expiry.color}`}>{expiry.label}</span>}
                           {(link.tags ?? []).map((t) => (
