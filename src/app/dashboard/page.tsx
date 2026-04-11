@@ -109,6 +109,13 @@ export default function DashboardPage() {
   const [shortenError, setShortenError] = useState("");
   const [newLink, setNewLink] = useState<LinkItem | null>(null);
   const [copied, setCopied] = useState(false);
+  // UTM
+  const [showUtm, setShowUtm] = useState(false);
+  const [utmSource, setUtmSource] = useState("");
+  const [utmMedium, setUtmMedium] = useState("");
+  const [utmCampaign, setUtmCampaign] = useState("");
+  const [utmTerm, setUtmTerm] = useState("");
+  const [utmContent, setUtmContent] = useState("");
 
   // Dashboard
   const [search, setSearch] = useState("");
@@ -176,10 +183,24 @@ export default function DashboardPage() {
     setNewLink(null);
     setCopied(false);
     try {
+      // Build UTM URL if any UTM params set
+      let finalUrl = url;
+      if (utmSource || utmMedium || utmCampaign || utmTerm || utmContent) {
+        try {
+          const u = new URL(url);
+          if (utmSource) u.searchParams.set("utm_source", utmSource.trim());
+          if (utmMedium) u.searchParams.set("utm_medium", utmMedium.trim());
+          if (utmCampaign) u.searchParams.set("utm_campaign", utmCampaign.trim());
+          if (utmTerm) u.searchParams.set("utm_term", utmTerm.trim());
+          if (utmContent) u.searchParams.set("utm_content", utmContent.trim());
+          finalUrl = u.toString();
+        } catch { /* use original url if parse fails */ }
+      }
+
       const res = await fetch("/api/shorten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, slug: slug || undefined, password: password || undefined, tags, expiresInDays: expiresInDays || undefined }),
+        body: JSON.stringify({ url: finalUrl, slug: slug || undefined, password: password || undefined, tags, expiresInDays: expiresInDays || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setShortenError(data.error || "Something went wrong"); }
@@ -188,6 +209,7 @@ export default function DashboardPage() {
         setLinks((prev) => [data, ...prev]);
         setProfile((p) => p ? { ...p, todayCount: p.todayCount + 1 } : p);
         setUrl(""); setSlug(""); setPassword(""); setTags([]); setTagInput(""); setExpiresInDays(0); setShowAdvanced(false);
+        setShowUtm(false); setUtmSource(""); setUtmMedium(""); setUtmCampaign(""); setUtmTerm(""); setUtmContent("");
       }
     } catch { setShortenError("Network error."); }
     finally { setShortening(false); }
@@ -491,6 +513,66 @@ export default function DashboardPage() {
                     {EXPIRY_OPTIONS.map((o) => <option key={o.value} value={o.value} className="bg-indigo-900">{o.label}</option>)}
                   </select>
                 </div>
+
+                {/* UTM toggle */}
+                <div className="sm:col-span-2">
+                  <button type="button" onClick={() => setShowUtm((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs text-indigo-300 hover:text-white transition-colors">
+                    <svg className={`w-3 h-3 transition-transform ${showUtm ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    UTM tracking parameters
+                    {(utmSource || utmMedium || utmCampaign) && <span className="bg-white/20 text-white px-1.5 py-0.5 rounded text-xs">active</span>}
+                  </button>
+                </div>
+
+                {showUtm && (
+                  <>
+                    <div>
+                      <label className="block text-xs text-indigo-300 mb-1">Source <span className="opacity-60">(e.g. telegram, twitter)</span></label>
+                      <input type="text" value={utmSource} onChange={(e) => setUtmSource(e.target.value)} placeholder="telegram"
+                        className="w-full px-3 py-2 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-indigo-300 mb-1">Medium <span className="opacity-60">(e.g. bot, email, social)</span></label>
+                      <input type="text" value={utmMedium} onChange={(e) => setUtmMedium(e.target.value)} placeholder="bot"
+                        className="w-full px-3 py-2 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-indigo-300 mb-1">Campaign <span className="opacity-60">(e.g. launch, sale)</span></label>
+                      <input type="text" value={utmCampaign} onChange={(e) => setUtmCampaign(e.target.value)} placeholder="april_launch"
+                        className="w-full px-3 py-2 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-indigo-300 mb-1">Term <span className="opacity-60">(paid keyword, optional)</span></label>
+                      <input type="text" value={utmTerm} onChange={(e) => setUtmTerm(e.target.value)} placeholder="url+shortener"
+                        className="w-full px-3 py-2 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-indigo-300 mb-1">Content <span className="opacity-60">(A/B variant, optional)</span></label>
+                      <input type="text" value={utmContent} onChange={(e) => setUtmContent(e.target.value)} placeholder="blue_button"
+                        className="w-full px-3 py-2 rounded-lg text-sm bg-white/10 border border-white/20 text-white placeholder-indigo-400 focus:outline-none focus:ring-2 focus:ring-white/30" />
+                    </div>
+                    {url && (utmSource || utmMedium || utmCampaign) && (
+                      <div className="sm:col-span-2 bg-white/10 rounded-lg px-3 py-2">
+                        <p className="text-xs text-indigo-300 mb-1 font-medium">Preview URL:</p>
+                        <p className="text-xs text-white/80 break-all font-mono leading-relaxed">
+                          {(() => {
+                            try {
+                              const u = new URL(url);
+                              if (utmSource) u.searchParams.set("utm_source", utmSource);
+                              if (utmMedium) u.searchParams.set("utm_medium", utmMedium);
+                              if (utmCampaign) u.searchParams.set("utm_campaign", utmCampaign);
+                              if (utmTerm) u.searchParams.set("utm_term", utmTerm);
+                              if (utmContent) u.searchParams.set("utm_content", utmContent);
+                              return u.toString();
+                            } catch { return url; }
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </form>
