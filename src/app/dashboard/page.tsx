@@ -16,6 +16,14 @@ interface LinkItem {
   tags: string[];
   isActive: boolean;
   source: string | null;
+  folderId: string | null;
+}
+
+interface Folder {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
 }
 
 interface Profile {
@@ -81,8 +89,13 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [links, setLinks] = useState<LinkItem[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState(false);
 
   // Shorten form
   const [url, setUrl] = useState("");
@@ -139,9 +152,10 @@ export default function DashboardPage() {
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   const fetchData = useCallback(async () => {
-    const [linksRes, profileRes] = await Promise.all([fetch("/api/links"), fetch("/api/profile")]);
+    const [linksRes, profileRes, foldersRes] = await Promise.all([fetch("/api/links"), fetch("/api/profile"), fetch("/api/folders")]);
     if (linksRes.ok) setLinks(await linksRes.json());
     if (profileRes.ok) setProfile(await profileRes.json());
+    if (foldersRes.ok) setFolders(await foldersRes.json());
     setLoading(false);
   }, []);
 
@@ -236,6 +250,42 @@ export default function DashboardPage() {
     finally { setImporting(false); }
   }
 
+  async function createFolder() {
+    if (!newFolderName.trim()) return;
+    setCreatingFolder(true);
+    try {
+      const res = await fetch("/api/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newFolderName.trim() }),
+      });
+      if (res.ok) {
+        const folder = await res.json();
+        setFolders((prev) => [...prev, folder]);
+        setNewFolderName("");
+        setShowNewFolder(false);
+      }
+    } finally {
+      setCreatingFolder(false);
+    }
+  }
+
+  async function deleteFolder(id: string) {
+    await fetch(`/api/folders/${id}`, { method: "DELETE" });
+    setFolders((prev) => prev.filter((f) => f.id !== id));
+    setLinks((prev) => prev.map((l) => l.folderId === id ? { ...l, folderId: null } : l));
+    if (activeFolder === id) setActiveFolder(null);
+  }
+
+  async function assignFolder(linkId: string, folderId: string | null) {
+    await fetch(`/api/links/${linkId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ folderId }),
+    });
+    setLinks((prev) => prev.map((l) => l.id === linkId ? { ...l, folderId } : l));
+  }
+
   async function openAnalytics(link: LinkItem) {
     setAnalyticsLink(link);
     setAnalyticsData(null);
@@ -281,6 +331,7 @@ export default function DashboardPage() {
           password: editPassword.trim() || null,
           tags: editTags,
           expiresAt,
+          folderId: editingLink.folderId ?? null,
         }),
       });
       if (res.ok) {
@@ -332,7 +383,8 @@ export default function DashboardPage() {
       l.originalUrl.toLowerCase().includes(search.toLowerCase()) ||
       (l.title ?? "").toLowerCase().includes(search.toLowerCase());
     const matchTag = !activeTag || (l.tags ?? []).includes(activeTag);
-    return matchSearch && matchTag;
+    const matchFolder = !activeFolder || l.folderId === activeFolder;
+    return matchSearch && matchTag && matchFolder;
   });
 
   const totalClicks = links.reduce((s, l) => s + l.clicks, 0);
@@ -511,6 +563,71 @@ export default function DashboardPage() {
             </button>
           ))}
         </div>
+
+        {/* Folders + Links layout */}
+        {tab === "links" && folders.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-700">Folders</h3>
+              <button onClick={() => setShowNewFolder((v) => !v)} className="text-xs text-indigo-600 hover:text-indigo-700 font-semibold">+ New</button>
+            </div>
+            {showNewFolder && (
+              <div className="px-4 py-3 border-b border-gray-100 flex gap-2">
+                <input autoFocus type="text" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") setShowNewFolder(false); }}
+                  placeholder="Folder name"
+                  className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button onClick={createFolder} disabled={creatingFolder}
+                  className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-60">
+                  {creatingFolder ? "…" : "Create"}
+                </button>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 px-4 py-3">
+              <button onClick={() => setActiveFolder(null)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${!activeFolder ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                All links
+                <span className="text-xs opacity-70">({links.length})</span>
+              </button>
+              {folders.map((f) => {
+                const count = links.filter((l) => l.folderId === f.id).length;
+                return (
+                  <div key={f.id} className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${activeFolder === f.id ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                    onClick={() => setActiveFolder(activeFolder === f.id ? null : f.id)}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>
+                    {f.name}
+                    <span className="text-xs opacity-70">({count})</span>
+                    <button onClick={(e) => { e.stopPropagation(); deleteFolder(f.id); }}
+                      className={`ml-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-red-400 ${activeFolder === f.id ? "text-white" : "text-gray-400"}`}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {tab === "links" && folders.length === 0 && (
+          <div className="flex items-center justify-between">
+            <div />
+            <button onClick={() => setShowNewFolder((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-indigo-600 border border-gray-200 hover:border-indigo-400 px-3 py-1.5 rounded-lg transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" /></svg>
+              New Folder
+            </button>
+          </div>
+        )}
+        {tab === "links" && folders.length === 0 && showNewFolder && (
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm px-4 py-3 flex gap-2">
+            <input autoFocus type="text" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") setShowNewFolder(false); }}
+              placeholder="Folder name"
+              className="flex-1 px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            <button onClick={createFolder} disabled={creatingFolder}
+              className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-60">
+              {creatingFolder ? "…" : "Create"}
+            </button>
+          </div>
+        )}
 
         {tab === "links" && (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -1003,6 +1120,21 @@ export default function DashboardPage() {
                   {EXPIRY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
+              {folders.length > 0 && (
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Folder</label>
+                  <select
+                    value={editingLink?.folderId ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value || null;
+                      setEditingLink((l) => l ? { ...l, folderId: val } : l);
+                    }}
+                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">No folder</option>
+                    {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
               <button onClick={() => setEditingLink(null)}
