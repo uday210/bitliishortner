@@ -3,7 +3,7 @@
   "name": "Snip — URL Shortener",
   "version": "1.0.0",
   "description": "Shorten any URL instantly with Snip (bitil.io)",
-  "permissions": ["activeTab", "contextMenus", "storage", "clipboardWrite"],
+  "permissions": ["activeTab", "contextMenus", "storage", "clipboardWrite", "scripting"],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

@@ -15,6 +15,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Snip — Free URL Shortener",
   description: "Shorten URLs instantly. Track clicks. Share anywhere.",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({
