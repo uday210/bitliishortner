@@ -56,16 +56,19 @@ saveKeyBtn.addEventListener("click", async () => {
       method: "GET",
       headers: { "Authorization": `Bearer ${key}` },
     });
+    if (!res.ok) {
+      showError(`Key rejected (status ${res.status})`);
+      return;
+    }
     const data = await res.json();
     if (!data.valid) { showError("Invalid API key"); return; }
-    chrome.storage.local.set({ apiKey: key }, () => {
-      showMain();
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]?.url) urlInput.value = tabs[0].url;
-      });
+    await chrome.storage.local.set({ apiKey: key });
+    showMain();
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (tabs[0]?.url) urlInput.value = tabs[0].url;
     });
-  } catch {
-    showError("Could not verify key — check your connection");
+  } catch (err) {
+    showError(`Error: ${err.message}`);
   } finally {
     saveKeyBtn.textContent = "Save";
     saveKeyBtn.disabled = false;
