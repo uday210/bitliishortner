@@ -842,12 +842,29 @@ export default function DashboardPage() {
             <h2 className="font-bold text-gray-900 text-lg mb-1">Bulk Import via CSV</h2>
             <p className="text-sm text-gray-400 mb-6">Upload a CSV file to create multiple short links at once.</p>
 
-            {/* CSV format guide */}
-            <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200">
-              <p className="text-xs font-semibold text-gray-600 mb-2">Expected CSV format:</p>
-              <code className="text-xs text-indigo-700 font-mono block">url,slug,title,tags,expires_in_days</code>
-              <code className="text-xs text-gray-500 font-mono block mt-1">https://example.com,my-link,My Title,"marketing,social",7</code>
-              <p className="text-xs text-gray-400 mt-2">Only <span className="font-medium">url</span> is required. All other columns are optional.</p>
+            {/* CSV template download */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-200 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-gray-600">Download the CSV template to get started.</p>
+                <p className="text-xs text-gray-400 mt-0.5">Only <span className="font-medium text-gray-500">url</span> is required. All other columns are optional.</p>
+              </div>
+              <button
+                onClick={() => {
+                  const csv = `url,slug,title,tags,expires_in_days\nhttps://example.com,my-link,My Title,"marketing,social",7\nhttps://example.com/page2,,,, `;
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const a = document.createElement("a");
+                  a.href = URL.createObjectURL(blob);
+                  a.download = "import-template.csv";
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 text-gray-600 text-xs font-semibold rounded-lg transition-colors shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download Template
+              </button>
             </div>
 
             <div
