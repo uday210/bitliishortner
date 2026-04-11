@@ -2,6 +2,13 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function proxy(req: NextRequest) {
+  // Allow CORS preflight through
+  if (req.method === "OPTIONS") return NextResponse.next();
+
+  // Allow API key authenticated requests through
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer snip_")) return NextResponse.next();
+
   let response = NextResponse.next({ request: req });
 
   const supabase = createServerClient(
