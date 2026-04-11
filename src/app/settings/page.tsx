@@ -188,7 +188,7 @@ export default function SettingsPage() {
                     <p className="text-sm text-gray-400 mt-0.5">Right-click any page or link to shorten it instantly in Chrome</p>
                   </div>
                 </div>
-                <a href="https://chrome.google.com/webstore" target="_blank" rel="noopener noreferrer"
+                <a href="https://chromewebstore.google.com/detail/snip-url-shortener/elmkkegdjpgodkomfgebambahdgnlkjd" target="_blank" rel="noopener noreferrer"
                   className="px-5 py-2 text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors shadow-sm">
                   Install Extension
                 </a>
