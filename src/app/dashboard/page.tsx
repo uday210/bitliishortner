@@ -116,6 +116,15 @@ export default function DashboardPage() {
   const [telegramConnecting, setTelegramConnecting] = useState(false);
   const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
 
+  // Edit modal
+  const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editExpiresInDays, setEditExpiresInDays] = useState(0);
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editTagInput, setEditTagInput] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
   const fetchData = useCallback(async () => {
@@ -214,6 +223,51 @@ export default function DashboardPage() {
       await fetchData();
     } catch { /* ignore */ }
     finally { setImporting(false); }
+  }
+
+  function openEdit(link: LinkItem) {
+    setEditingLink(link);
+    setEditTitle(link.title ?? "");
+    setEditPassword(link.password ?? "");
+    setEditTags(link.tags ?? []);
+    setEditTagInput("");
+    // Calculate days remaining if expiresAt set
+    if (link.expiresAt) {
+      const days = Math.ceil((new Date(link.expiresAt).getTime() - Date.now()) / 86400000);
+      setEditExpiresInDays(Math.max(days, 0));
+    } else {
+      setEditExpiresInDays(0);
+    }
+  }
+
+  async function handleEditSave() {
+    if (!editingLink) return;
+    setEditSaving(true);
+    try {
+      let expiresAt: string | null = null;
+      if (editExpiresInDays > 0) {
+        const d = new Date();
+        d.setDate(d.getDate() + editExpiresInDays);
+        expiresAt = d.toISOString();
+      }
+      const res = await fetch(`/api/links/${editingLink.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editTitle.trim() || null,
+          password: editPassword.trim() || null,
+          tags: editTags,
+          expiresAt,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setLinks((prev) => prev.map((l) => l.id === updated.id ? updated : l));
+        setEditingLink(null);
+      }
+    } finally {
+      setEditSaving(false);
+    }
   }
 
   async function handleTelegramConnect() {
@@ -545,6 +599,10 @@ export default function DashboardPage() {
 
                       {/* Actions - always visible */}
                       <div className="flex items-center gap-0.5 shrink-0">
+                        <button onClick={() => openEdit(link)} title="Edit"
+                          className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
                         <button onClick={() => setQrSlug(qrSlug === link.slug ? null : link.slug)} title="QR Code"
                           className="p-2 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
@@ -745,6 +803,75 @@ export default function DashboardPage() {
       </main>
 
       {/* QR Modal */}
+      {/* Edit Modal */}
+      {editingLink && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setEditingLink(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Edit Link</h3>
+              <button onClick={() => setEditingLink(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Short URL</label>
+                <p className="text-sm font-mono text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg">{baseUrl.replace(/^https?:\/\//, "")}/{editingLink.slug}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Title</label>
+                <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Optional title"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Password</label>
+                <input type="text" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Leave blank to remove"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Tags</label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {editTags.map((t) => (
+                    <span key={t} className="flex items-center gap-1 bg-indigo-50 text-indigo-600 text-xs px-2 py-0.5 rounded-full">
+                      #{t}
+                      <button type="button" onClick={() => setEditTags(editTags.filter((x) => x !== t))} className="hover:text-red-400">×</button>
+                    </span>
+                  ))}
+                </div>
+                <input type="text" value={editTagInput} onChange={(e) => setEditTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === ",") {
+                      e.preventDefault();
+                      const t = editTagInput.trim().toLowerCase();
+                      if (t && !editTags.includes(t)) setEditTags([...editTags, t]);
+                      setEditTagInput("");
+                    }
+                  }}
+                  placeholder="Type tag + Enter"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Expires after</label>
+                <select value={editExpiresInDays} onChange={(e) => setEditExpiresInDays(Number(e.target.value))}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  {EXPIRY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
+              <button onClick={() => setEditingLink(null)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleEditSave} disabled={editSaving}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-colors disabled:opacity-60">
+                {editSaving ? "Saving…" : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {qrSlug && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setQrSlug(null)}>
           <div className="bg-white rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 w-72" onClick={(e) => e.stopPropagation()}>
