@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { url, slug, title, password, tags, expiresInDays } = await req.json();
+    const { url, slug, title, password, tags, expiresInDays, source } = await req.json();
 
     if (!url) return NextResponse.json({ error: "URL is required" }, { status: 400 });
     try { new URL(url); } catch { return NextResponse.json({ error: "Invalid URL" }, { status: 400 }); }
@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
         tags: tags?.filter(Boolean) ?? [],
         expiresAt,
         isActive: true,
+        source: source ?? null,
       })
       .select()
       .single();

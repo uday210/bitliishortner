@@ -99,7 +99,7 @@ shortenBtn.addEventListener("click", async () => {
     const res = await fetch(`${API_BASE}/api/shorten`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, source: "extension" }),
     });
     const data = await res.json();
     if (!res.ok) { showError(data.error || "Failed to shorten"); return; }

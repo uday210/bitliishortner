@@ -27,7 +27,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, source: "extension" }),
     });
 
     const data = await res.json();
