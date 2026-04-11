@@ -22,6 +22,7 @@ interface Profile {
   subscription: "free" | "basic" | "premium" | "unlimited";
   limit: number | null;
   todayCount: number;
+  telegramConnected: boolean;
 }
 
 interface ImportResult {
@@ -108,6 +109,11 @@ export default function DashboardPage() {
   const [csvRows, setCsvRows] = useState<Record<string, string>[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResults, setImportResults] = useState<ImportResult[] | null>(null);
+
+  // Telegram
+  const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
+  const [telegramConnecting, setTelegramConnecting] = useState(false);
+  const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -207,6 +213,29 @@ export default function DashboardPage() {
       await fetchData();
     } catch { /* ignore */ }
     finally { setImporting(false); }
+  }
+
+  async function handleTelegramConnect() {
+    setTelegramConnecting(true);
+    setTelegramDeepLink(null);
+    try {
+      const res = await fetch("/api/telegram/connect", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) setTelegramDeepLink(data.deepLink);
+    } finally {
+      setTelegramConnecting(false);
+    }
+  }
+
+  async function handleTelegramDisconnect() {
+    setTelegramDisconnecting(true);
+    try {
+      await fetch("/api/telegram/disconnect", { method: "POST" });
+      setProfile((p) => p ? { ...p, telegramConnected: false } : p);
+      setTelegramDeepLink(null);
+    } finally {
+      setTelegramDisconnecting(false);
+    }
   }
 
   async function handleLogout() {
@@ -615,6 +644,61 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {/* Telegram Integration */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center shrink-0">
+                <svg className="w-6 h-6 text-sky-500" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z"/>
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="font-bold text-gray-900">Telegram Bot</h2>
+                  {profile?.telegramConnected
+                    ? <span className="text-xs bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full">Connected</span>
+                    : <span className="text-xs bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Not connected</span>}
+                </div>
+                <p className="text-sm text-gray-400 mt-0.5">
+                  {profile?.telegramConnected
+                    ? "Send any URL to your bot and get a short link instantly"
+                    : "Connect Telegram to shorten URLs directly from chat"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {profile?.telegramConnected ? (
+                <button onClick={handleTelegramDisconnect} disabled={telegramDisconnecting}
+                  className="px-4 py-2 text-sm font-semibold text-red-500 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-60">
+                  {telegramDisconnecting ? "Disconnecting…" : "Disconnect"}
+                </button>
+              ) : (
+                <button onClick={handleTelegramConnect} disabled={telegramConnecting}
+                  className="px-5 py-2 text-sm font-bold bg-sky-500 hover:bg-sky-600 text-white rounded-xl transition-colors disabled:opacity-60 shadow-sm">
+                  {telegramConnecting ? "Generating link…" : "Connect Telegram"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {telegramDeepLink && !profile?.telegramConnected && (
+            <div className="mt-5 bg-sky-50 border border-sky-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-sky-800 mb-1">Step 1 — Open the bot in Telegram</p>
+              <a href={telegramDeepLink} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-lg transition-colors">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z"/>
+                </svg>
+                Open Telegram Bot
+              </a>
+              <p className="text-xs text-sky-600 mt-2">Step 2 — Press <strong>Start</strong> in the bot. Your account will be linked automatically.</p>
+              <p className="text-xs text-gray-400 mt-1">Link expires in 10 minutes.</p>
+            </div>
+          )}
+        </div>
 
         {/* Subscription plans */}
         <div>

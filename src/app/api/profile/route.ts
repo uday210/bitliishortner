@@ -52,6 +52,7 @@ export async function GET() {
       subscription,
       limit,
       todayCount: todayCount ?? 0,
+      telegramConnected: !!profile?.telegramChatId,
     });
   } catch (error) {
     console.error("Profile error:", error);
