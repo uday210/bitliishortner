@@ -13,9 +13,9 @@ interface Profile {
 }
 
 const PLAN_CONFIG = {
-  free:      { label: "Free",      color: "bg-gray-100 text-gray-600" },
-  basic:     { label: "Basic",     color: "bg-blue-100 text-blue-700" },
-  premium:   { label: "Premium",   color: "bg-violet-100 text-violet-700" },
+  free: { label: "Free", color: "bg-gray-100 text-gray-600" },
+  basic: { label: "Basic", color: "bg-blue-100 text-blue-700" },
+  premium: { label: "Premium", color: "bg-violet-100 text-violet-700" },
   unlimited: { label: "Unlimited", color: "bg-emerald-100 text-emerald-700" },
 };
 
@@ -133,7 +133,7 @@ export default function SettingsPage() {
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center shrink-0">
                     <svg className="w-6 h-6 text-sky-500" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z"/>
+                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z" />
                     </svg>
                   </div>
                   <div>
@@ -167,7 +167,7 @@ export default function SettingsPage() {
                   <p className="text-sm font-semibold text-sky-800 mb-2">Step 1 — Open the bot in Telegram</p>
                   <a href={telegramDeepLink} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white text-sm font-semibold rounded-lg transition-colors">
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z"/></svg>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248-2.02 9.52c-.149.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12L7.008 14.617l-2.938-.92c-.638-.2-.651-.638.136-.943l11.494-4.432c.532-.194.998.13.862.926z" /></svg>
                     Open Telegram Bot
                   </a>
                   <p className="text-xs text-sky-600 mt-2">Step 2 — Press <strong>Start</strong> in the bot. Your account will be linked automatically.</p>
@@ -188,7 +188,7 @@ export default function SettingsPage() {
                     <p className="text-sm text-gray-400 mt-0.5">Right-click any page or link to shorten it instantly in Chrome</p>
                   </div>
                 </div>
-                <a href="https://chromewebstore.google.com/detail/snip-url-shortener/elmkkegdjpgodkomfgebambahdgnlkjd" target="_blank" rel="noopener noreferrer"
+                <a href="https://chromewebstore.google.com/detail/snip-%E2%80%94-url-shortener/elmkkegdjpgodkomfgebambahdgnlkjd?authuser=0&hl=en" target="_blank" rel="noopener noreferrer"
                   className="px-5 py-2 text-sm font-bold bg-violet-600 hover:bg-violet-700 text-white rounded-xl transition-colors shadow-sm">
                   Install Extension
                 </a>
@@ -262,9 +262,9 @@ export default function SettingsPage() {
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Subscription</h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { key: "free",      name: "Free",      price: "$0",  limit: "20 links/day",    features: ["QR codes", "Click tracking", "Custom slugs", "Tags & folders", "Link expiry"] },
-              { key: "basic",     name: "Basic",     price: "$5",  limit: "100 links/day",   features: ["Everything in Free", "Password protection", "Bulk CSV import", "Priority support"] },
-              { key: "premium",   name: "Premium",   price: "$15", limit: "500 links/day",   features: ["Everything in Basic", "Analytics dashboard", "Branded domains", "API access"] },
+              { key: "free", name: "Free", price: "$0", limit: "20 links/day", features: ["QR codes", "Click tracking", "Custom slugs", "Tags & folders", "Link expiry"] },
+              { key: "basic", name: "Basic", price: "$5", limit: "100 links/day", features: ["Everything in Free", "Password protection", "Bulk CSV import", "Priority support"] },
+              { key: "premium", name: "Premium", price: "$15", limit: "500 links/day", features: ["Everything in Basic", "Analytics dashboard", "Branded domains", "API access"] },
               { key: "unlimited", name: "Unlimited", price: "$29", limit: "Unlimited links", features: ["Everything in Premium", "White label", "SLA guarantee", "Custom integrations"] },
             ].map((p) => {
               const isCurrent = profile?.subscription === p.key;
